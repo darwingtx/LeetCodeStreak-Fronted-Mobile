@@ -37,7 +37,7 @@ export const styles = StyleSheet.create({
     highlight: {
         color: Colors.primary,
     },
-
+    // Cards
     card: {
         backgroundColor: Colors.bgCard,
         borderRadius: 15,
@@ -61,6 +61,7 @@ export const styles = StyleSheet.create({
         color: Colors.primary,
     },
 
+    // Mapa de progreso
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -73,7 +74,7 @@ export const styles = StyleSheet.create({
         borderRadius: 4,
         backgroundColor: Colors.bgAccent,
     },
-
+    // Listas
     listItem: {
         flexDirection: 'row',
         alignItems: 'center',
