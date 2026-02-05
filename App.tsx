@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { SafeAreaView, View, Text, TouchableOpacity, StatusBar } from 'react-native';
-import { styles, Colors } from './src/Styles/AppStyles'; 
+import { styles, Colors } from './src/Styles/AppStyles';
 import { IndividualScreen } from './src/components/IndividualScreen';
 import GroupStreak from './src/components/GroupStreak';
 import Profile from './src/components/Profile';
+import DailyProblem from './src/components/DailyProblem';
 
 export default function App() {
   // Estado para controlar la navegación simple
@@ -12,13 +13,15 @@ export default function App() {
   // Función para decidir qué componente renderizar
   const renderContent = () => {
     switch (activeTab) {
-      case 'Indiv': 
+      case 'Indiv':
         return <IndividualScreen />;
-      case 'Grupo': 
+      case 'Daily':
+        return <DailyProblem />;
+      case 'Grupo':
         return <GroupStreak />;
-      case 'Perfil': 
+      case 'Perfil':
         return <Profile />;
-      default: 
+      default:
         return <IndividualScreen />;
     }
   };
@@ -27,13 +30,17 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       {/* StatusBar */}
       <StatusBar barStyle="light-content" />
-      
+
       {/* Header Fijo */}
-      <View style={styles.header}>
-        <Text style={styles.logoText}>
-          LeetCode<Text style={{ color: Colors.primary }}>Streak</Text>
-        </Text>
-      </View>
+<View style={styles.header}>
+    <Text style={styles.logoText}>LeetCode<Text style={{ color: Colors.primary }}>Streak</Text></Text>
+    {/* Nuevo botón de acceso rápido en el Header */}
+    <TouchableOpacity onPress={() => setActiveTab('Daily')}>
+        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: Colors.primary, fontWeight: 'bold' }}>🔥</Text>
+        </View>
+    </TouchableOpacity>
+</View>
 
       {/* Área de contenido dinámico */}
       <View style={{ flex: 1 }}>
@@ -42,17 +49,10 @@ export default function App() {
 
       {/* Navegación Inferior */}
       <View style={styles.tabBar}>
-        {['Indiv', 'Grupo', 'Perfil'].map((tab) => (
-          <TouchableOpacity 
-            key={tab} 
-            onPress={() => setActiveTab(tab)}
-            style={styles.tabItem}
-          >
-            <Text style={[
-              styles.tabText, 
-              activeTab === tab && { color: Colors.primary, fontWeight: 'bold' }
-            ]}>
-              {tab}
+        {['Indiv', 'Daily', 'Grupo', 'Perfil'].map((tab) => (
+          <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={styles.tabItem}>
+            <Text style={[styles.tabText, activeTab === tab && { color: Colors.primary }]}>
+              {tab === 'Daily' ? '🔥' : tab}
             </Text>
           </TouchableOpacity>
         ))}
