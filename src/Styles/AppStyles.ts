@@ -1,5 +1,6 @@
 // Styles/AppStyles.ts
 import { StyleSheet, Dimensions } from 'react-native';
+import { Platform } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -93,12 +94,18 @@ export const styles = StyleSheet.create({
 
     tabBar: {
         flexDirection: 'row',
-        height: 70,
-        backgroundColor: Colors.bgCard,
+        backgroundColor: '#1A1D29', // Tu color de fondo
         borderTopWidth: 1,
-        borderTopColor: Colors.bgAccent,
-        justifyContent: 'space-around',
+        borderTopColor: '#2F3241',
+        
+        // --- LA SOLUCIÓN ---
+        // En iOS el SafeAreaView suele funcionar, en Android añadimos espacio manual
+        paddingBottom: Platform.OS === 'android' ? 20 : 0, 
+        height: Platform.OS === 'android' ? 80 : 60, // Aumentamos la altura para que no se vea apretado
+        // -------------------
+        
         alignItems: 'center',
+        justifyContent: 'space-around',
     },
     tabItem: {
         alignItems: 'center',
