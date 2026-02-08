@@ -6,6 +6,8 @@ import GroupStreak from './src/components/GroupStreak';
 import Profile from './src/components/Profile';
 import DailyProblem from './src/components/DailyProblem';
 import { FlameIcon } from './src/components/FlameIcon';
+import { LoginScreen } from './src/components/LoginScreen';
+import {RegisterScreen} from './src/components/RegisterScreen';
 
 export default function App() {
 
@@ -13,21 +15,20 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('Indiv');
 
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'Indiv':
-        return <IndividualScreen />;
-      case 'Daily':
-        return <DailyProblem />;
-      case 'Grupo':
-        return <GroupStreak />;
-      case 'Perfil':
-        return <Profile />;
-      default:
-        return <IndividualScreen />;
-    }
-  };
-
+const renderContent = () => {
+        switch (activeTab) {
+            case 'Register': 
+                return <RegisterScreen onRegisterSuccess={() => {
+                    console.log("Registro completado");
+                    setActiveTab('Indiv');
+                }} />;
+            case 'Indiv': return <IndividualScreen />;
+            case 'Daily': return <DailyProblem />;
+            case 'Grupo': return <GroupStreak />;
+            case 'Perfil': return <Profile />;
+            default: return <IndividualScreen />;
+        }
+    };
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -37,21 +38,6 @@ export default function App() {
         <Text style={styles.logoText}>
           LeetCode<Text style={{ color: Colors.primary }}>Streak</Text>
         </Text>
-
-        <TouchableOpacity onPress={() => setActiveTab('Daily')}>
-          <View style={{
-            width: 38,
-            height: 38,
-            borderRadius: 19,
-            backgroundColor: activeTab === 'Daily' ? Colors.primary + '30' : Colors.bgAccent,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: activeTab === 'Daily' ? Colors.primary : 'transparent'
-          }}>
-            <FlameIcon size={22} active={activeTab === 'Daily'} />
-          </View>
-        </TouchableOpacity>
       </View>
 
       <View style={{ flex: 1 }}>
@@ -60,7 +46,7 @@ export default function App() {
 
       {/* Navegación Inferior */}
       <View style={styles.tabBar}>
-        {['Indiv', 'Daily', 'Grupo', 'Perfil'].map((tab) => {
+        {['Register', 'Indiv', 'Daily', 'Grupo', 'Perfil'].map((tab) => {
           const isActive = activeTab === tab;
 
           return (
