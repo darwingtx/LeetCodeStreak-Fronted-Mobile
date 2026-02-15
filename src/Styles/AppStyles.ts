@@ -39,18 +39,15 @@ export const styles = StyleSheet.create({
         color: Colors.primary,
     },
     // Cards
-    card: {
-        backgroundColor: Colors.bgCard,
-        borderRadius: 15,
-        padding: 20,
-        marginHorizontal: 20,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 8,
-    },
+card: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
+},
     streakHero: {
         alignItems: 'center',
         borderWidth: 1,
@@ -62,18 +59,30 @@ export const styles = StyleSheet.create({
         color: Colors.primary,
     },
 
-    // Mapa de progreso
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
+    streakGrid: {
         marginTop: 10,
     },
-    square: {
+    weekRow: {
+        flexDirection: 'row',
+        marginBottom: 16,
+        justifyContent: 'flex-start',
+        gap: 6,
+    },
+    weekDayContainer: {
         width: (width - 100) / 7,
+        height: (width - 100) / 7,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    square: {
+        width: '100%',
         aspectRatio: 1,
-        borderRadius: 4,
+        borderRadius: 6,
         backgroundColor: Colors.bgAccent,
+    },
+    weekSeparator: {
+        height: 8,
+        marginVertical: 4,
     },
     // Listas
     listItem: {
@@ -94,16 +103,11 @@ export const styles = StyleSheet.create({
 
     tabBar: {
         flexDirection: 'row',
-        backgroundColor: '#1A1D29', // Tu color de fondo
+        backgroundColor: '#1A1D29', 
         borderTopWidth: 1,
         borderTopColor: '#2F3241',
-        
-        // --- LA SOLUCIÓN ---
-        // En iOS el SafeAreaView suele funcionar, en Android añadimos espacio manual
         paddingBottom: Platform.OS === 'android' ? 20 : 0, 
-        height: Platform.OS === 'android' ? 80 : 60, // Aumentamos la altura para que no se vea apretado
-        // -------------------
-        
+        height: Platform.OS === 'android' ? 80 : 60, 
         alignItems: 'center',
         justifyContent: 'space-around',
     },
