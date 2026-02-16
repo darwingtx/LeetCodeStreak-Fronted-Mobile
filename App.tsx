@@ -8,6 +8,7 @@ import DailyProblem from './src/components/DailyProblem';
 import { FlameIcon } from './src/components/FlameIcon';
 import { LoginScreen } from './src/components/LoginScreen';
 import {RegisterScreen} from './src/components/RegisterScreen';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function App() {
 
@@ -29,8 +30,18 @@ const renderContent = () => {
             default: return <IndividualScreen />;
         }
     };
+
+  function AppContent() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={{ 
+      flex: 1, 
+      backgroundColor: '#1A1D29',
+      // Aplica el margen dinámico arriba y abajo
+      paddingTop: insets.top,
+      paddingBottom: insets.bottom 
+    }}>
       <StatusBar barStyle="light-content" />
 
       {/* Header Fijo */}
@@ -71,6 +82,12 @@ const renderContent = () => {
           );
         })}
       </View>
-    </SafeAreaView>
+    </View>
+  );
+}
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
