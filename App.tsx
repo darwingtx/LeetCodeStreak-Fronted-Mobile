@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StatusBar } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { styles, Colors } from './src/Styles/AppStyles';
 import { IndividualScreen } from './src/components/IndividualScreen';
 import GroupStreak from './src/components/GroupStreak';
@@ -7,44 +7,50 @@ import Profile from './src/components/Profile';
 import DailyProblem from './src/components/DailyProblem';
 import { FlameIcon } from './src/components/FlameIcon';
 import { LoginScreen } from './src/components/LoginScreen';
-import {RegisterScreen} from './src/components/RegisterScreen';
+import { RegisterScreen } from './src/components/RegisterScreen';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 
-export default function App() {
+/** Splash / loading screen shown while restoring the session */
+function SplashScreen() {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#1A1D29', justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ color: Colors.textMain, fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
+        LeetCode<Text style={{ color: Colors.primary }}>Streak</Text>
+      </Text>
+      <ActivityIndicator size="large" color={Colors.primary} />
+    </View>
+  );
+}
 
-
+/** Main authenticated app with bottom tab navigation */
+function MainApp() {
   const [activeTab, setActiveTab] = useState('Indiv');
+  const { logout } = useAuth();
 
+  const renderContent = () => {
+    switch (activeTab) {
 
-const renderContent = () => {
-        switch (activeTab) {
-            case 'Register': 
-                return <RegisterScreen onRegisterSuccess={() => {
-                    console.log("Registro completado");
-                    setActiveTab('Indiv');
-                }} />;
-            case 'Indiv': return <IndividualScreen />;
-            case 'Daily': return <DailyProblem />;
-            case 'Grupo': return <GroupStreak />;
-            case 'Perfil': return <Profile />;
-            default: return <IndividualScreen />;
-        }
-    };
+      case 'Indiv': return <IndividualScreen />;
+      case 'Daily': return <DailyProblem />;
+      case 'Grupo': return <GroupStreak />;
+      case 'Perfil': return <Profile />;
+      default: return <IndividualScreen />;
+    }
+  };
 
-  function AppContent() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ 
-      flex: 1, 
+    <View style={{
+      flex: 1,
       backgroundColor: '#1A1D29',
-      // Aplica el margen dinámico arriba y abajo
       paddingTop: insets.top,
-      paddingBottom: insets.bottom 
+      paddingBottom: insets.bottom,
     }}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header Fijo */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.logoText}>
           LeetCode<Text style={{ color: Colors.primary }}>Streak</Text>
@@ -55,9 +61,9 @@ const renderContent = () => {
         {renderContent()}
       </View>
 
-      {/* Navegación Inferior */}
+      {/* Bottom Navigation */}
       <View style={styles.tabBar}>
-        {['Register', 'Indiv', 'Daily', 'Grupo', 'Perfil'].map((tab) => {
+        {['Indiv', 'Daily', 'Grupo', 'Perfil'].map((tab) => {
           const isActive = activeTab === tab;
 
           return (
@@ -66,7 +72,6 @@ const renderContent = () => {
               onPress={() => setActiveTab(tab)}
               style={styles.tabItem}
             >
-              {/* Si es la pestaña Daily, mostramos la Flama SVG, si no, el texto */}
               {tab === 'Daily' ? (
                 <View style={{ alignItems: 'center' }}>
                   <FlameIcon size={24} active={isActive} />
@@ -85,9 +90,77 @@ const renderContent = () => {
     </View>
   );
 }
+
+/** Root navigator that switches between Auth and Main flows */
+function AppNavigator() {
+  const { user, isRestoringSession, login, verifyExistence, register } = useAuth();
+  const [showRegister, setShowRegister] = useState(false);
+  const [pendingUsername, setPendingUsername] = useState('');
+
+  // Show splash while restoring the session from secure storage
+  if (isRestoringSession) {
+    return <SplashScreen />;
+  }
+
+  // Not authenticated → show login or register
+  if (!user) {
+    if (showRegister) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#1A1D29' }}>
+          <RegisterScreen
+            initialUsername={pendingUsername}
+            onRegisterSuccess={async (username) => {
+              if (username) {
+                try {
+                  await login(username);
+                } catch (err) {
+                  console.error('Login after register failed:', err);
+                }
+              }
+              setShowRegister(false);
+            }}
+          />
+          <TouchableOpacity
+            onPress={() => setShowRegister(false)}
+            style={{ padding: 15, alignItems: 'center', marginBottom: 20 }}
+          >
+            <Text style={{ color: Colors.primary }}>Already have an account? Log in</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <LoginScreen
+        onLogin={async (username: string) => {
+          try {
+            const exists = await verifyExistence(username);
+            if (exists) {
+              await login(username);
+            } else {
+              // If user doesn't exist, create them first
+              await register(username);
+              setPendingUsername(username);
+              setShowRegister(true);
+            }
+          } catch (err) {
+            console.error('Login flow error:', err);
+          }
+        }}
+      />
+    );
+  }
+
+  // Authenticated → show main app
+  return <MainApp />;
+}
+
+export default function App() {
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

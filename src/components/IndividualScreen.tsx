@@ -1,7 +1,9 @@
-import React from 'react';
-import { ScrollView, Text, StyleSheet, View, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, Text, StyleSheet, View, Dimensions, ActivityIndicator } from 'react-native';
 import Card from './Card';
 import { Colors } from '../Styles/AppStyles';
+import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -11,9 +13,9 @@ const CARD_PADDING = 16;
 // Calculo del ancho de la targeta (mapa de progreso)
 const AVAILABLE_WIDTH = width - (MARGIN * 2) - (CARD_PADDING * 2);
 // Calculo del ancho de cada columna (7 días por semana)
-const COLUMN_WIDTH = AVAILABLE_WIDTH / 7; 
+const COLUMN_WIDTH = AVAILABLE_WIDTH / 7;
 // Tamaño del cuadrado dentro de cada columna (85% del ancho para dejar espacio entre ellos)
-const SQUARE_SIZE = COLUMN_WIDTH * 0.85; 
+const SQUARE_SIZE = COLUMN_WIDTH * 0.85;
 
 const generateWeeks = () => {
     const daysInMonth = 28; // Febrero 2026
@@ -36,6 +38,29 @@ const generateWeeks = () => {
 };
 
 export const IndividualScreen = () => {
+    const { user, authFetch } = useAuth();
+    const [streak, setStreak] = useState<number>(0);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStreak = async () => {
+            if (!user) return;
+            try {
+                const response = await authFetch(`${API_BASE_URL}/streak/${user.id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setStreak(data.currentStreak || 0);
+                }
+            } catch (err) {
+                console.error('Error fetching streak:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStreak();
+    }, [user, authFetch]);
+
     const weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
     return (
@@ -44,14 +69,18 @@ export const IndividualScreen = () => {
             {/* Tarjeta de Racha */}
             <Card style={localStyles.heroCard}>
                 <Text style={localStyles.label}>Racha Actual</Text>
-                <Text style={localStyles.streakNumber}>15</Text>
+                {loading ? (
+                    <ActivityIndicator size="large" color={Colors.primary} style={{ marginVertical: 15 }} />
+                ) : (
+                    <Text style={localStyles.streakNumber}>{streak}</Text>
+                )}
                 <Text style={localStyles.subtext}>¡Días seguidos!</Text>
             </Card>
 
-                {/* Mapa de Progreso */}
+            {/* Mapa de Progreso */}
             <Card style={localStyles.gridCard}>
                 <Text style={localStyles.gridTitle}>Progreso - Febrero</Text>
-                
+
                 <View style={localStyles.weekRow}>
                     {weekDays.map((day, i) => (
                         <View key={i} style={localStyles.column}>
@@ -66,7 +95,7 @@ export const IndividualScreen = () => {
                             {week.map((day, dayIndex) => (
                                 <View key={dayIndex} style={localStyles.column}>
                                     {day > 0 ? (
-                                        <View 
+                                        <View
                                             style={[
                                                 localStyles.square,
                                                 day % 3 === 0 && { backgroundColor: Colors.primary },
@@ -101,25 +130,25 @@ const localStyles = StyleSheet.create({
     label: { color: Colors.textMuted, fontSize: 14, fontWeight: '600' },
     streakNumber: { color: Colors.primary, fontSize: 64, fontWeight: 'bold' },
     subtext: { color: Colors.textMain, fontSize: 16 },
-    
+
     gridCard: {
         marginHorizontal: MARGIN,
         padding: CARD_PADDING,
     },
-    gridTitle: { 
-        color: Colors.textMain, 
-        fontWeight: 'bold', 
+    gridTitle: {
+        color: Colors.textMain,
+        fontWeight: 'bold',
         fontSize: 18,
-        marginBottom: 20 
+        marginBottom: 20
     },
     weekRow: {
         flexDirection: 'row',
         width: '100%',
-        marginBottom: 8, 
+        marginBottom: 8,
     },
     column: {
-        width: COLUMN_WIDTH, 
-        alignItems: 'center', 
+        width: COLUMN_WIDTH,
+        alignItems: 'center',
     },
     weekDayLabel: {
         color: Colors.textMuted,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -6,41 +6,66 @@ import {
     ScrollView,
     Alert,
     TextInput,
-    Clipboard,
+    ActivityIndicator,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { styles, Colors } from '../Styles/AppStyles';
+import { useAuth } from '../contexts/AuthContext';
 
 interface RegisterScreenProps {
-    onRegisterSuccess?: () => void;
+    onRegisterSuccess?: (username?: string) => void;
+    initialUsername?: string;
 }
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
     onRegisterSuccess,
+    initialUsername,
 }) => {
-    // Generar un código único aleatorio
-    const generateUniqueCode = () => {
-        return 'LC' + Math.random().toString(36).substring(2, 15).toUpperCase() + Date.now().toString(36).toUpperCase();
-    };
+    const { user, generateVerificationCode, verifyProfile, isLoading } = useAuth();
 
-    const [verificationCode, setVerificationCode] = useState(generateUniqueCode());
-    const [userInput, setUserInput] = useState('');
+    const [verificationCode, setVerificationCode] = useState<string | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'failed'>('pending');
 
-    // Función para copiar el código
-    const copyToClipboard = async () => {
-        await Clipboard.setString(verificationCode);
-        Alert.alert('Code Copied', 'The code has been copied to the clipboard!');
+    const username = user?.username ?? initialUsername ?? '';
+
+    /** Step 1: Request a verification code from the backend */
+    const handleGenerateCode = async () => {
+        if (!username) {
+            Alert.alert('Error', 'No username found. Please log in first.');
+            return;
+        }
+
+        setIsGenerating(true);
+        try {
+            const response = await generateVerificationCode(username);
+            setVerificationCode(response.code);
+            setVerificationStatus('pending');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to generate code';
+            Alert.alert('Error', message);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
-    // Función para verificar que el usuario completó los pasos
-    const verifySteps = async () => {
-        setIsVerifying(true);
+    /** Copy the code to clipboard */
+    const copyToClipboard = async () => {
+        if (verificationCode) {
+            await Clipboard.setStringAsync(verificationCode);
+            Alert.alert('Code Copied', 'The code has been copied to the clipboard!');
+        }
+    };
 
-        // Simulamos una verificación - en producción harías una llamada a un servidor
-        // que verificaría si el código está en el README del usuario de LeetCode
-        setTimeout(() => {
-            if (userInput.trim() === verificationCode) {
+    /** Step 3: Ask the backend to verify the profile */
+    const handleVerify = async () => {
+        if (!username) return;
+
+        setIsVerifying(true);
+        try {
+            const verified = await verifyProfile(username);
+            if (verified) {
                 setVerificationStatus('verified');
                 Alert.alert(
                     'Success!',
@@ -48,11 +73,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                     [
                         {
                             text: 'Continue',
-                            onPress: () => {
-                                if (onRegisterSuccess) {
-                                    onRegisterSuccess();
-                                }
-                            },
+                            onPress: () => onRegisterSuccess?.(username),
                         },
                     ]
                 );
@@ -60,143 +81,156 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 setVerificationStatus('failed');
                 Alert.alert(
                     'Verification Failed',
-                    'The code does not match. Please make sure you have correctly copied the code to your LeetCode README.'
+                    'The code was not found in your LeetCode bio. Make sure you saved it and try again.'
                 );
             }
+        } catch (err) {
+            setVerificationStatus('failed');
+            const message = err instanceof Error ? err.message : 'Verification failed';
+            Alert.alert('Error', message);
+        } finally {
             setIsVerifying(false);
-        }, 2000);
-    };
-
-    // Función para regenerar el código
-    const regenerateCode = () => {
-        setVerificationCode(generateUniqueCode());
-        setUserInput('');
-        setVerificationStatus('pending');
-        Alert.alert('New Code Generated', 'A new verification code has been generated.');
+        }
     };
 
     return (
         <ScrollView style={{ flex: 1, backgroundColor: Colors.bgMain }}>
             <View style={{ padding: 20 }}>
-                {/* Título */}
+                {/* Title */}
                 <Text style={[styles.logoText, { textAlign: 'center', marginBottom: 30, marginTop: 20 }]}>
                     Complete Your Registration
                 </Text>
 
-                {/* Card de Instrucciones */}
-                <View style={[styles.card, { marginBottom: 20 }]}>
+                {/* Instructions Card */}
+                <View style={[styles.card, { marginBottom: 20, padding: 20 }]}>
                     <Text style={{ color: Colors.primary, fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>
                         📋 Steps to verify your account:
                     </Text>
 
-                    {/* Paso 1 */}
+                    {/* Step 1: Generate Code */}
                     <View style={{ marginBottom: 20 }}>
                         <Text style={{ color: Colors.textMain, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
-                            Step 1: Copy your verification code
+                            Step 1: Generate your verification code
                         </Text>
                         <Text style={{ color: Colors.textMuted, fontSize: 13, marginBottom: 12 }}>
-                            Your unique code for this session:
+                            Press the button below to get a unique code from the server:
                         </Text>
 
-                        {/* Código a copiar */}
-                        <View
-                            style={{
-                                backgroundColor: Colors.bgAccent,
-                                padding: 15,
-                                borderRadius: 10,
-                                borderWidth: 2,
-                                borderColor: Colors.primary,
-                                marginBottom: 10,
-                            }}
-                        >
-                            <Text
+                        {!verificationCode ? (
+                            <TouchableOpacity
                                 style={{
-                                    color: Colors.primary,
-                                    fontSize: 16,
-                                    fontWeight: 'bold',
-                                    textAlign: 'center',
-                                    fontFamily: 'monospace',
+                                    backgroundColor: Colors.primary,
+                                    padding: 14,
+                                    borderRadius: 8,
+                                    alignItems: 'center',
+                                    opacity: isGenerating ? 0.6 : 1,
                                 }}
+                                onPress={handleGenerateCode}
+                                disabled={isGenerating}
                             >
-                                {verificationCode}
-                            </Text>
-                        </View>
+                                {isGenerating ? (
+                                    <ActivityIndicator color={Colors.bgMain} />
+                                ) : (
+                                    <Text style={{ color: Colors.bgMain, fontSize: 14, fontWeight: 'bold' }}>
+                                        🔑 Generate Code
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        ) : (
+                            <>
+                                {/* Display the code */}
+                                <View
+                                    style={{
+                                        backgroundColor: Colors.bgAccent,
+                                        padding: 15,
+                                        borderRadius: 10,
+                                        borderWidth: 2,
+                                        borderColor: Colors.primary,
+                                        marginBottom: 10,
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            color: Colors.primary,
+                                            fontSize: 16,
+                                            fontWeight: 'bold',
+                                            textAlign: 'center',
+                                            fontFamily: 'monospace',
+                                        }}
+                                    >
+                                        {verificationCode}
+                                    </Text>
+                                </View>
 
-                        {/* Botón copiar */}
-                        <TouchableOpacity
-                            style={{
-                                backgroundColor: Colors.primary,
-                                padding: 12,
-                                borderRadius: 8,
-                                alignItems: 'center',
-                                marginBottom: 8,
-                            }}
-                            onPress={copyToClipboard}
-                        >
-                            <Text style={{ color: Colors.bgMain, fontSize: 14, fontWeight: 'bold' }}>
-                                📋 Copy Code
-                            </Text>
-                        </TouchableOpacity>
+                                {/* Copy button */}
+                                <TouchableOpacity
+                                    style={{
+                                        backgroundColor: Colors.primary,
+                                        padding: 12,
+                                        borderRadius: 8,
+                                        alignItems: 'center',
+                                        marginBottom: 8,
+                                    }}
+                                    onPress={copyToClipboard}
+                                >
+                                    <Text style={{ color: Colors.bgMain, fontSize: 14, fontWeight: 'bold' }}>
+                                        📋 Copy Code
+                                    </Text>
+                                </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={{
-                                backgroundColor: Colors.bgAccent,
-                                padding: 10,
-                                borderRadius: 8,
-                                alignItems: 'center',
-                                borderWidth: 1,
-                                borderColor: Colors.primary,
-                            }}
-                            onPress={regenerateCode}
-                        >
-                            <Text style={{ color: Colors.primary, fontSize: 12, fontWeight: '600' }}>
-                                Generate New Code
-                            </Text>
-                        </TouchableOpacity>
+                                {/* Regenerate */}
+                                <TouchableOpacity
+                                    style={{
+                                        backgroundColor: Colors.bgAccent,
+                                        padding: 10,
+                                        borderRadius: 8,
+                                        alignItems: 'center',
+                                        borderWidth: 1,
+                                        borderColor: Colors.primary,
+                                    }}
+                                    onPress={() => {
+                                        setVerificationCode(null);
+                                        setVerificationStatus('pending');
+                                        handleGenerateCode();
+                                    }}
+                                >
+                                    <Text style={{ color: Colors.primary, fontSize: 12, fontWeight: '600' }}>
+                                        Generate New Code
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
 
-                    {/* Divisor */}
-                    <View
-                        style={{
-                            height: 1,
-                            backgroundColor: Colors.bgAccent,
-                            marginVertical: 15,
-                        }}
-                    />
+                    {/* Divider */}
+                    <View style={{ height: 1, backgroundColor: Colors.bgAccent, marginVertical: 15 }} />
 
                     {/* Step 2 */}
                     <View style={{ marginBottom: 20 }}>
                         <Text style={{ color: Colors.textMain, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
-                            Step 2: Paste it in your LeetCode README
+                            Step 2: Paste it in your LeetCode bio
                         </Text>
                         <Text style={{ color: Colors.textMuted, fontSize: 13, lineHeight: 20 }}>
                             1. Access your LeetCode profile{'\n'}
-                            2. Go to your "About" section{'\n'}
-                            3. Paste the code in your README{'\n'}
+                            2. Go to the "Edit Profile" section{'\n'}
+                            3. Paste the code in your bio / summary{'\n'}
                             4. Save changes
                         </Text>
                     </View>
 
-                    {/* Divisor */}
-                    <View
-                        style={{
-                            height: 1,
-                            backgroundColor: Colors.bgAccent,
-                            marginVertical: 15,
-                        }}
-                    />
+                    {/* Divider */}
+                    <View style={{ height: 1, backgroundColor: Colors.bgAccent, marginVertical: 15 }} />
 
-                    {/* Paso 3 */}
+                    {/* Step 3 */}
                     <View>
                         <Text style={{ color: Colors.textMain, fontSize: 16, fontWeight: '600', marginBottom: 12 }}>
-                            Step 3: Verify your registration
+                            Step 3: Verify your profile
                         </Text>
                         <Text style={{ color: Colors.textMuted, fontSize: 13, marginBottom: 15 }}>
-                            Confirm that you have completed the previous steps by pasting the code here:
+                            After saving the code in your LeetCode bio, press verify below. The server will check your profile.
                         </Text>
 
-
-                        {/* Estado de verificación */}
+                        {/* Verification status */}
                         {verificationStatus === 'verified' && (
                             <View
                                 style={{
@@ -224,7 +258,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                                 }}
                             >
                                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>
-                                    ✗ Verificación fallida - Intenta de nuevo
+                                    ✗ Verification failed — Try again
                                 </Text>
                             </View>
                         )}
@@ -236,14 +270,18 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                                 padding: 15,
                                 borderRadius: 8,
                                 alignItems: 'center',
-                                opacity: isVerifying ? 0.6 : 1,
+                                opacity: isVerifying || !verificationCode ? 0.6 : 1,
                             }}
-                            onPress={verifySteps}
-                            disabled={isVerifying || verificationStatus === 'verified' || userInput.trim() === ''}
+                            onPress={handleVerify}
+                            disabled={isVerifying || verificationStatus === 'verified' || !verificationCode}
                         >
-                            <Text style={{ color: Colors.bgMain, fontSize: 16, fontWeight: 'bold' }}>
-                                {isVerifying ? 'Verificando...' : verificationStatus === 'verified' ? '✓ Verificado' : 'Verificar registro'}
-                            </Text>
+                            {isVerifying ? (
+                                <ActivityIndicator color={Colors.bgMain} />
+                            ) : (
+                                <Text style={{ color: Colors.bgMain, fontSize: 16, fontWeight: 'bold' }}>
+                                    {verificationStatus === 'verified' ? '✓ Verified' : 'Verify Registration'}
+                                </Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -262,7 +300,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                         💡 Important Note:
                     </Text>
                     <Text style={{ color: Colors.textMuted, fontSize: 12, lineHeight: 18 }}>
-                        This code verifies that you are the real owner of your LeetCode account. Make sure the code is visible in your LeetCode README.
+                        This code verifies that you are the real owner of your LeetCode account. Make sure the code is visible in your LeetCode bio.
                     </Text>
                 </View>
             </View>
